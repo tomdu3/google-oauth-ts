@@ -12,21 +12,26 @@ passport.use(
       callbackURL: '/auth/google/callback',
     },
     async (accessToken, refreshToken, profile, done) => {
-      const { id, emails, displayName } = profile;
+      try {
+        const { id, emails, displayName } = profile;
 
-      let user = await prisma.user.findUnique({ where: { googleId: id } });
+        // Handle finding or creating user in your database
+        let user = await prisma.user.findUnique({ where: { googleId: id } });
 
-      if (!user) {
-        user = await prisma.user.create({
-          data: {
-            googleId: id,
-            email: emails?.[0].value || '',
-            name: displayName,
-          },
-        });
+        if (!user) {
+          user = await prisma.user.create({
+            data: {
+              googleId: id,
+              email: emails?.[0].value || '',
+              name: displayName,
+            },
+          });
+        }
+
+        done(null, user);
+      } catch (error) {
+        done(error); // Handle errors without crashing
       }
-
-      return done(null, user);
     }
   )
 );
