@@ -1,4 +1,3 @@
-// controllers/authController.ts
 import { Request, Response } from "express";
 import {
   generateAccessToken,
@@ -10,37 +9,6 @@ import { JwtPayload } from "jsonwebtoken";
 
 const prisma = new PrismaClient();
 
-// Register User Controller
-export const registerUser = async (req: Request, res: Response) => {
-  const { googleId, name, email } = req.body;
-  if (!googleId || !email || !name) {
-    return res.status(400).json({ message: "Missing required fields" });
-  }
-
-  try {
-    const existingUser = await prisma.user.findUnique({ where: { googleId } });
-
-    if (existingUser) {
-      return res.status(400).json({ message: "User already exists" });
-    }
-
-    const newUser = await prisma.user.create({
-      data: {
-        googleId,
-        email,
-        name,
-      },
-    });
-
-    return res
-      .status(201)
-      .json({ message: "User registered successfully", user: newUser });
-  } catch (error) {
-    console.error("Error registering user:", error);
-    return res.status(500).json({ message: "Internal server error" });
-  }
-};
-
 export const googleCallback = async (req: Request, res: Response) => {
   if (req.user) {
     const googleUser = req.user as any;
@@ -48,8 +16,8 @@ export const googleCallback = async (req: Request, res: Response) => {
     try {
       // Extract Google ID, name, and email correctly
       const googleId = googleUser.id; // Check if this is where Google provides the ID
-      const name = googleUser.name; // Full name
-      const email = googleUser.email; // Primary email
+      const name = googleUser.displayName; // Full name
+      const email = googleUser.emails?.[0]?.value; // Primary email
       console.log(googleId, name, email);
 
       // Check for missing fields
