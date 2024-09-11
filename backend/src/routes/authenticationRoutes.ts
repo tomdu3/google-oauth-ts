@@ -1,7 +1,7 @@
 // routes/authRoutes.ts
 import express from 'express';
 import passport from 'passport';
-import { googleCallback, refreshAccessToken, logout, registerUser } from '../controllers/authenticationControllers';
+import { googleCallback, refreshAccessToken, logout} from '../controllers/authenticationControllers';
 
 const router = express.Router();
 
@@ -17,7 +17,5 @@ router.post('/refresh-token', refreshAccessToken);
 // Logout Route
 router.get('/logout', logout);
 
-// Register Route
-router.post('/register', registerUser);
 
 export default router;

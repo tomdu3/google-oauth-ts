@@ -1,3 +1,4 @@
+// controllers/authController.ts
 import { Request, Response } from "express";
 import {
   generateAccessToken,
@@ -16,9 +17,9 @@ export const googleCallback = async (req: Request, res: Response) => {
     try {
       // Extract Google ID, name, and email correctly
       const googleId = googleUser.id; // Check if this is where Google provides the ID
-      const name = googleUser.displayName; // Full name
-      const email = googleUser.emails?.[0]?.value; // Primary email
-      console.log(googleId, name, email);
+      const name = googleUser.name; // Full name
+      const email = googleUser.email; // Primary email
+  
 
       // Check for missing fields
       if (!googleId || !email || !name) {
