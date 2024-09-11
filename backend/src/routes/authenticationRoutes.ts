@@ -1,11 +1,12 @@
-import { login, register } from '../controllers/authenticationControllers';
 import express from 'express';
 import passport from 'passport';
-import { generateToken } from '../middleware/jwt'; // JWT generation logic
-import { Request, Response, NextFunction } from 'express';
+import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../middleware/jwt'; // Assuming you have JWT logic here
+import { Request, Response } from 'express';
+import { JwtPayload } from 'jsonwebtoken';
 
 const router = express.Router();
 
+// Google OAuth Login
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
 router.get(
@@ -13,13 +14,23 @@ router.get(
   passport.authenticate('google', { failureRedirect: '/', session: false }),
   (req, res) => {
     if (req.user) {
-      const token = generateToken((req.user as any).id);
-      res.cookie('auth_token', token, {
+      const accessToken = generateAccessToken((req.user as any).id);
+      const refreshToken = generateRefreshToken((req.user as any).id);
+
+      res.cookie('access_token', accessToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        maxAge: 3600000,
+        maxAge: 3600000, // 1 hour for access token
         sameSite: 'strict',
       });
+
+      res.cookie('refresh_token', refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days for refresh token
+        sameSite: 'strict',
+      });
+
       res.redirect('/');
     } else {
       res.status(401).json({ error: 'Authentication failed' });
@@ -27,19 +38,50 @@ router.get(
   }
 );
 
-// error handler
-router.use((err: any, req: Request, res: Response, next: NextFunction) => {
-  console.error('Error:', err.message);
-  res.status(500).json({ error: 'Internal Server Error' });
-});
+// Refresh Token Route
+router.post('/refresh-token', (req: Request, res: Response) => {
+  const refreshToken = req.cookies.refresh_token;
 
-  router.get('/logout', (req, res) => {
-    res.clearCookie('auth_token', {
+  if (!refreshToken) {
+    return res.status(401).json({ error: 'No refresh token found' });
+  }
+
+  try {
+    // Cast the decoded token to JwtPayload
+    const decoded = verifyRefreshToken(refreshToken) as JwtPayload;
+
+    if (!decoded.id) {
+      return res.status(403).json({ error: 'Invalid token structure' });
+    }
+
+    const newAccessToken = generateAccessToken(decoded.id);
+    const newRefreshToken = generateRefreshToken(decoded.id); // Optionally rotate refresh tokens
+
+    res.cookie('access_token', newAccessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
+      maxAge: 3600000, // 1 hour for access token
       sameSite: 'strict',
     });
-    res.json({ message: 'Logged out successfully' });
-  });
-  
+
+    res.cookie('refresh_token', newRefreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days for refresh token
+      sameSite: 'strict',
+    });
+
+    return res.json({ accessToken: newAccessToken });
+  } catch (error) {
+    return res.status(403).json({ error: 'Invalid refresh token' });
+  }
+});
+
+// Logout Route
+router.get('/logout', (req, res) => {
+  res.clearCookie('access_token');
+  res.clearCookie('refresh_token');
+  res.json({ message: 'Logged out successfully' });
+});
+
 export default router;
