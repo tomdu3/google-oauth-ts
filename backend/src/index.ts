@@ -1,26 +1,33 @@
 import express from 'express';
-import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
-import "./controllers/googleControllers";
-import authenticationRoutes from './routes/authenticationRoutes';
 import passport from 'passport';
-
-dotenv.config();
+import authenticationRoutes from './routes/authenticationRoutes';
+import authorizationRoutes from './routes/authorizationRoutes';
+import './config/passportConfig'; // Make sure this path is correct
 
 const app = express();
 
-app.use(express.json());
+// Middleware
 app.use(cookieParser());
-app.use(passport.initialize());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+app.set('view engine', 'ejs');
 
-// Authentication Routes
-app.use('/auth', authenticationRoutes);
+// Initialize Passport
+app.use(passport.initialize()); // Since you are not using sessions, only initialize Passport
 
-app.get('/', (req, res) => {
-  res.send('Hello World');
+// Routes
+app.use('/auth', authenticationRoutes); // All authentication-related routes
+app.use('/', authorizationRoutes); // Other routes
+
+// Error handling (optional)
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error(err.stack);
+  res.status(500).send('Something broke!');
 });
 
+// Start the server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server is running on port ${PORT}`);
 });

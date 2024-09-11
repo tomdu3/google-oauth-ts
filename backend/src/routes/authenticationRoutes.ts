@@ -1,10 +1,11 @@
 import express from 'express';
 import passport from 'passport';
-import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../middleware/jwt'; // Assuming you have JWT logic here
+import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../middleware/jwt'; // Assuming JWT logic is here
 import { Request, Response } from 'express';
 import { JwtPayload } from 'jsonwebtoken';
 
 const router = express.Router();
+
 
 // Google OAuth Login
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
@@ -38,6 +39,7 @@ router.get(
   }
 );
 
+
 // Refresh Token Route
 router.post('/refresh-token', (req: Request, res: Response) => {
   const refreshToken = req.cookies.refresh_token;
@@ -47,41 +49,39 @@ router.post('/refresh-token', (req: Request, res: Response) => {
   }
 
   try {
-    // Cast the decoded token to JwtPayload
+    // Verify the refresh token
     const decoded = verifyRefreshToken(refreshToken) as JwtPayload;
 
     if (!decoded.id) {
       return res.status(403).json({ error: 'Invalid token structure' });
     }
 
+    // Generate new access token
     const newAccessToken = generateAccessToken(decoded.id);
-    const newRefreshToken = generateRefreshToken(decoded.id); // Optionally rotate refresh tokens
 
+    // Optionally: rotate the refresh token
+    const newRefreshToken = generateRefreshToken(decoded.id);
+
+    // Set the new tokens in cookies
     res.cookie('access_token', newAccessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      maxAge: 3600000, // 1 hour for access token
+      maxAge: 3600000, // 1 hour
       sameSite: 'strict',
     });
 
     res.cookie('refresh_token', newRefreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days for refresh token
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       sameSite: 'strict',
     });
 
+    // Return the new access token to the client
     return res.json({ accessToken: newAccessToken });
   } catch (error) {
     return res.status(403).json({ error: 'Invalid refresh token' });
   }
-});
-
-// Logout Route
-router.get('/logout', (req, res) => {
-  res.clearCookie('access_token');
-  res.clearCookie('refresh_token');
-  res.json({ message: 'Logged out successfully' });
 });
 
 export default router;
