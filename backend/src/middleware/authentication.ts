@@ -1,18 +1,20 @@
-import { Request, Response, NextFunction } from 'express';
-import { verifyToken } from './jwt'; // Your JWT verification logic
+// routes/authRoutes.ts
+import express from 'express';
+import passport from 'passport';
+import { googleCallback, refreshAccessToken, logout } from '../controllers/authenticationController';
 
-export const authenticate = (req: Request, res: Response, next: NextFunction) => {
-  const token = req.cookies.auth_token; // Access the token from the cookie
+const router = express.Router();
 
-  if (!token) {
-    return res.status(401).json({ error: 'No authentication token found' });
-  }
+// Google OAuth Login
+router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
-  try {
-    const decoded = verifyToken(token); // Verify the JWT
-    req.user = decoded; // Attach the decoded user info to the request object
-    next(); // Proceed to the next middleware or route handler
-  } catch (err) {
-    return res.status(401).json({ error: 'Invalid token' });
-  }
-};
+// Google OAuth Callback
+router.get('/google/callback', passport.authenticate('google', { failureRedirect: '/', session: false }), googleCallback);
+
+// Refresh Token Route
+router.post('/refresh-token', refreshAccessToken);
+
+// Logout Route
+router.get('/logout', logout);
+
+export default router;
