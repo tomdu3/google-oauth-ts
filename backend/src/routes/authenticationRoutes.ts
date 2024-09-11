@@ -84,4 +84,23 @@ router.post('/refresh-token', (req: Request, res: Response) => {
   }
 });
 
+// Logout Route (clears both access and refresh tokens)
+router.get('/logout', (req: Request, res: Response) => {
+  // Clear the cookies
+  res.clearCookie('access_token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+  });
+
+  res.clearCookie('refresh_token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+  });
+
+  // Optionally, redirect to the homepage or a login page
+  res.json({ message: 'Logged out successfully' });
+});
+
 export default router;
